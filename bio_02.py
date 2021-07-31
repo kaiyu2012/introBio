@@ -96,27 +96,7 @@ def ApproximatePatternMatching(Text, Pattern, d):
               
     return positions
 
-
-
-# Input: String text, k-mer, and d
-# out put: A list of k-mer Patterns which has Hamming distance at most d from Pattern
-def FrequentWordsWithMismatches(Text, k, d):
-    l = len(Text)
-    patterns = {}
-    for i in range(l-k+1):
-        x = Text[i:i+k]
-        if x not in patterns:
-            patterns[x] = 1
-        else:
-            patterns[x] += 1
-      
-    freq = []  
-    for p in patterns:
-        if patterns[p] == d:
-            freq.append(p)
-    
-    print(freq)
-            
+          
 
 def immediateneighbor(pattern):
     neighborhood=[pattern]
@@ -129,43 +109,44 @@ def immediateneighbor(pattern):
     return neighborhood
 
 
-
-
+# Input: String text, k-mer, and d
+# out put: A list of k-mer Patterns which has Hamming distance at most d from Pattern
 def FrequentWordsWithMismatches_Sys(Text, k, d):
     Patterns = []
-    freqMap = {}
+    freqMap = defaultdict(lambda: 0)
     n = len(Text)
     for i in range(n-k+1):
         Pattern = Text[i: i+k]
-        neighborhood = Neighbors(Pattern, d)
-        for j in range(len(neighborhood)):
-            neighbor = neighborhood[j]
-            if not freqMap[neighbor]:
-                freqMap[neighbor] = 1
-            else:
-                freqMap[neighbor] += 1
-                
-    m = max(freqMap)
-    for Pattern in freqMap:
-        if freqMap[Pattern] == m:
-            Patterns.append(Pattern)
+        neighborhood = neighbors(Pattern, d)
+        for neighbor in neighborhood:                        
+            freqMap[neighbor] += 1
+                                       
+    m = max(freqMap.values()) 
+    print(m)   
+    
+    for p in freqMap:
+        if freqMap[p] == m:
+            Patterns.append(p)
     return Patterns
 
 
-def Neighbors(Pattern, d):
-        if d == 0:
-            return {Pattern}
-        if len(Pattern) == 1: 
-            return {'A', 'C', 'G', 'T'}
-        Neighborhood = {}
-        SuffixNeighbors = Neighbors(Suffix(Pattern), d)
-        # for each string Text from SuffixNeighbors
-        #     if HammingDistance(Suffix(Pattern), Text) < d
-        #         for each nucleotide x
-        #             add x • Text to Neighborhood
-        #     else
-        #         add FirstSymbol(Pattern) • Text to Neighborhood
-        # return Neighborhood
+chars = "ACGT"
+
+def neighbors(pattern, d):
+    assert(d <= len(pattern))
+
+    if d == 0:
+        return [pattern]
+
+    r2 = neighbors(pattern[1:], d-1)
+    r = [c + r3 for r3 in r2 for c in chars if c != pattern[0]]
+
+    if (d < len(pattern)):
+        r2 = neighbors(pattern[1:], d)
+        r += [pattern[0] + r3 for r3 in r2]
+
+    return r
+
     
 
 def frequent_words_mismatches(seq, k, d):
@@ -183,10 +164,81 @@ def frequent_words_mismatches(seq, k, d):
 
     return freq_words[max(freq_words)]     
         
-  
+
+import itertools
+import time
+from collections import defaultdict
+
+def FrequentWordsWithMismatches(Genome, k, d):
+    start = time.process_time()
+    aprox_frq_words = []
+    frequencies = defaultdict(lambda: 0)
+
+    
+    # all existent kmers with d mismatches of current kmer in genome
+    for index in range(len(Genome) - k + 1):
+        curr_kmer_and_neighbors = PermuteMotifDistanceTimes(Genome[index : index + k], d)
+        for kmer in curr_kmer_and_neighbors:
+            frequencies[kmer] += 1 
+
+    for kmer in frequencies:
+        if frequencies[kmer] == max(frequencies.values()):
+            aprox_frq_words.append(kmer)
+    end = time.process_time()
+    print("Time:", end - start)
+    return aprox_frq_words
+
+
+def PermuteMotifOnce(motif, alphabet={"A", "C", "G", "T"}):
+    """
+    Gets all strings within hamming distance 1 of motif and returns it as a
+    list.
+    """
+
+    return list(set(itertools.chain.from_iterable([[
+        motif[:pos] + nucleotide + motif[pos + 1:] for
+        nucleotide in alphabet] for
+        pos in range(len(motif))])))
+
+
+def PermuteMotifDistanceTimes(motif, d):
+    workingSet = {motif}
+    for _ in range(d):
+        workingSet = set(itertools.chain.from_iterable(map(PermuteMotifOnce, workingSet)))
+    return list(workingSet)
+
+
+def RevPattern(pattern):
+    rev = ""
+    for i in pattern:
+        if i == "A":
+            rev += "T"
+        elif i == "T":
+            rev += "A"
+        elif i == "G":
+            rev += "C"
+        elif i == "C":
+            rev += "G"
+
+    return rev
 
 def main():
+
+    t = "GATACACTTCCCGAGTAGGTACTG"
+    print(SkewArray(t))
+
+    t1 = "CAGAAAGGAAGGTCCCCATACACCGACGCACCAGTTTA"
+    t2 = "CACGCCGTATGCATAAACGAGCCGCACGAACCAGAGAG"
+    print(HammingDistance(t1, t2))
+    exit(0)
     
+    # print(*neighbors("AAAGCGTCCACT", 3))
+    t = "ACGTTGCATGTCGCATGATGCATGAGAGCT"
+    x = FrequentWordsWithMismatches_Sys(t, 4, 1)
+    print(*x)
+    x = FrequentWordsWithMismatches(t, 4, 1)
+    print(*x)
+    exit(0)
     # t1 = "ACGTTGCATGTCGCATGATGCATGAGAGCT"
     # x = frequent_words_mismatches(t1, 4, 1)
     # print(x)
